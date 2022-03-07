@@ -417,9 +417,13 @@ JetFiller::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     */
 
 //--- b tagging and scaling factors
-    float bTagger;
-    bTagger = j.bDiscriminator(bTaggerName) + j.bDiscriminator((bTaggerName + "b")); //one should just sum for doing b tagging, the b and bb probabilities
-    //cout << "b tag is = " << bTagger << endl;
+    float cTaggerVsL, cTaggerVsB, cParticleNetVsL, cParticleNetVsB;
+    cTaggerVsL = j.bDiscriminator("pfDeepFlavourJetTags:probc") / (j.bDiscriminator("pfDeepFlavourJetTags:probc") + j.bDiscriminator("pfDeepFlavourJetTags:probuds") + j.bDiscriminator("pfDeepFlavourJetTags:probg") + 1E-8); //one should just sum for doing b tagging, the b and bb probabilities
+    cTaggerVsB = j.bDiscriminator("pfDeepFlavourJetTags:probc") / (j.bDiscriminator("pfDeepFlavourJetTags:probc") + j.bDiscriminator("pfDeepFlavourJetTags:probb") + j.bDiscriminator("pfDeepFlavourJetTags:probbb") + j.bDiscriminator("pfDeepFlavourJetTags:problepb") + 1E-8); //one should just sum for doing b tagging, the b and bb probabilities
+    cParticleNetVsL = j.bDiscriminator("pfParticleNetAK4DiscriminatorsJetTags:CvsL");
+    cParticleNetVsB = j.bDiscriminator("pfParticleNetAK4DiscriminatorsJetTags:CvsB");
+    // std::cout << cParticleNetVsL << std::endl;
+    //cout << "b tag is = " << cTaggerVsB << endl;
 
     // Check of tagger labels stored in the MiniAOD and recognized by the bDiscriminator
     //#const std::vector<std::pair<std::string, float> > & getPairDiscri() const;
@@ -429,7 +433,7 @@ JetFiller::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     //cout << pd_obj << "  Discriminator: " << pd.at(pd_obj).first << " \t " << pd.at(pd_obj).second  << endl;
     // }
 
-    bool isBtagged = bTagger > bTaggerThreshold;
+    bool isBtagged = cTaggerVsB > bTaggerThreshold;
     bool isBtaggedWithSF   = isBtagged;
     bool isBtaggedWithSFUp = isBtagged;
     bool isBtaggedWithSFDn = isBtagged;
@@ -453,7 +457,7 @@ JetFiller::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 //      {
 //			cout<<"jet pT="<<jpt<<", eta="<<jeta<<endl;
 //			cout<<"bTag name="<<bTaggerName<<endl;
-//			cout<<"bTag score="<<bTagger<<endl;
+//			cout<<"bTag score="<<cTaggerVsB<<endl;
 //			cout<<" flav = "<<flav<<endl;
 //			cout<<" SF   = "<<SF  <<endl;
 //			cout<<" SFUp = "<<SFUp<<endl;
@@ -606,7 +610,10 @@ JetFiller::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     j.addUserFloat("JetID",JetID);
     j.addUserFloat("PUjetID",PUjetID);
     j.addUserFloat("PUjetID_score",PUjetID_score);
-    j.addUserFloat("bTagger",bTagger);
+    j.addUserFloat("cTaggerVsL",cTaggerVsL);
+    j.addUserFloat("cTaggerVsB",cTaggerVsB);
+    j.addUserFloat("cParticleNetVsL",cParticleNetVsL);
+    j.addUserFloat("cParticleNetVsB",cParticleNetVsB);
     j.addUserFloat("isBtagged",isBtagged);
     j.addUserFloat("isBtaggedWithSF",isBtaggedWithSF);
     j.addUserFloat("isBtaggedWithSF_Up",isBtaggedWithSFUp);

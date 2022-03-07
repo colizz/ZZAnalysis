@@ -79,6 +79,10 @@
 #include <MelaAnalytics/CandidateLOCaster/interface/MELACandidateRecaster.h>
 #include <CommonLHETools/LHEHandler/interface/LHEHandler.h>
 
+#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
+#include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
+
 #include "ZZ4lConfigHelper.h"
 #include "HZZ4lNtupleFactory.h"
 
@@ -95,6 +99,7 @@ bool verbose = false; //ATbbf
 namespace {
   bool writeJets = true;     // Write jets in the tree. FIXME: make this configurable
   bool writePhotons = true; // Write photons in the tree. FIXME: make this configurable
+  bool writeSVs = true;
   bool addKinRefit = true;
   bool addVtxFit = false;
   bool addFSRDetails = false;
@@ -287,7 +292,10 @@ namespace {
   std::vector<float> JetPhi ;
   std::vector<float> JetMass ;
   std::vector<float> JetEnergy ;
-  std::vector<float> JetBTagger ;
+  std::vector<float> JetCTaggerVsL ;
+  std::vector<float> JetCTaggerVsB ;
+  std::vector<float> JetCParticleNetVsL ;
+  std::vector<float> JetCParticleNetVsB ;
   std::vector<float> JetIsBtagged;
   std::vector<float> JetIsBtaggedWithSF;
   std::vector<float> JetIsBtaggedWithSFUp;
@@ -369,7 +377,20 @@ namespace {
   std::vector<float> PhotonPhi ;
   std::vector<bool> PhotonIsCutBasedLooseID;
 
-
+  // SV info
+  std::vector<float> SVPhi ;
+  std::vector<float> SVEta ;
+  std::vector<float> SVMass ;
+  std::vector<float> SVEnergy ;
+  std::vector<float> SVPt ;
+  std::vector<short> SVNTracks ;
+  std::vector<float> SVNormChi2 ;
+  std::vector<float> SVDxy ;
+  std::vector<float> SVDxySig ;
+  std::vector<float> SVD3d ;
+  std::vector<float> SVD3dSig ;
+  std::vector<float> SVCosThetaSVPV ;
+  
   Short_t genFinalState  = 0;
   Int_t genProcessId  = 0;
   Float_t genHEPMCweight  = 0;
@@ -598,6 +619,7 @@ private:
   virtual void FillCandidate(const pat::CompositeCandidate& higgs, bool evtPass, const edm::Event&, const Int_t CRflag);
   virtual void FillJet(const pat::Jet& jet);
   virtual void FillPhoton(int year, const pat::Photon& photon);
+  virtual void FillSV(const reco::VertexCompositePtrCandidate& sv, const reco::Vertex& pv);
   virtual void endJob() ;
 
   virtual void FillGENCandidate(const pat::CompositeCandidate& cand); //AT
@@ -699,6 +721,7 @@ private:
   edm::EDGetTokenT<edm::View<pat::CompositeCandidate> > lhecandToken;
   edm::EDGetTokenT<edm::TriggerResults> triggerResultToken;
   edm::EDGetTokenT<vector<reco::Vertex> > vtxToken;
+  edm::EDGetTokenT<vector<reco::VertexCompositePtrCandidate> > svToken;
   edm::EDGetTokenT<edm::View<pat::Jet> > jetToken;
   edm::EDGetTokenT<pat::PhotonCollection> photonToken;
   edm::EDGetTokenT<pat::METCollection> metToken;
@@ -830,6 +853,7 @@ HZZ4lNtupleMaker::HZZ4lNtupleMaker(const edm::ParameterSet& pset) :
   }
   triggerResultToken = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"));
   vtxToken = consumes<vector<reco::Vertex> >(edm::InputTag("goodPrimaryVertices"));
+  svToken = consumes<vector<reco::VertexCompositePtrCandidate> >(edm::InputTag("slimmedSecondaryVertices"));
   jetToken = consumes<edm::View<pat::Jet> >(edm::InputTag("cleanJets"));
   photonToken = consumes<pat::PhotonCollection>(edm::InputTag("slimmedPhotons"));
   metToken = consumes<pat::METCollection>(metTag);
@@ -1193,13 +1217,15 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
     //-------- AT End GENlevel
 
     const auto& genweights = genInfo->weights();
-    if (genweights.size() > 1){
-      if ((genweights.size() != 14 && genweights.size() != 46) || genweights[0] != genweights[1]){
-        cms::Exception e("GenWeights");
-        e << "Expected to find 1 gen weight, or 14 or 46 with the first two the same, found " << genweights.size() << ":\n";
-        for (auto w : genweights) e << w << " ";
-        throw e;
-      }
+    if ((genweights.size() == 14 || genweights.size() == 46) && genweights[0] == genweights[1]){
+      // To proceed the herwig sample, allow the genweights do not have pythia format
+
+      // if ((genweights.size() != 14 && genweights.size() != 46) || genweights[0] != genweights[1]){
+      //   cms::Exception e("GenWeights");
+      //   e << "Expected to find 1 gen weight, or 14 or 46 with the first two the same, found " << genweights.size() << ":\n";
+      //   for (auto w : genweights) e << w << " ";
+      //   throw e;
+      // }
       auto nominal = genweights[0];
       PythiaWeight_isr_muRoneoversqrt2 = genweights[2] / nominal;
       PythiaWeight_fsr_muRoneoversqrt2 = genweights[3] / nominal;
@@ -1441,6 +1467,14 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
   event.getByToken(vtxToken,vertices);
   Nvtx=vertices->size();
 
+  // Secondary vertex
+  Handle<vector<reco::VertexCompositePtrCandidate> > svs;
+  event.getByToken(svToken, svs);
+  if (writeSVs) {
+    auto &pv = vertices->at(0);
+    for (unsigned int i = 0; i< svs->size(); ++i)
+      FillSV(svs->at(i), pv);
+  }
 
   // Jets (cleaned wrt all tight isolated leptons)
   Handle<edm::View<pat::Jet> > CleanedJets;
@@ -1865,7 +1899,10 @@ void HZZ4lNtupleMaker::FillJet(const pat::Jet& jet)
    JetPhi .push_back( jet.phi());
    JetMass .push_back( jet.p4().M());
    JetEnergy .push_back( jet.p4().energy());
-   JetBTagger .push_back( jet.userFloat("bTagger"));
+   JetCTaggerVsL .push_back( jet.userFloat("cTaggerVsL"));
+   JetCTaggerVsB .push_back( jet.userFloat("cTaggerVsB"));
+   JetCParticleNetVsL .push_back( jet.userFloat("cParticleNetVsL"));
+   JetCParticleNetVsB .push_back( jet.userFloat("cParticleNetVsB"));
    JetIsBtagged .push_back( jet.userFloat("isBtagged"));
    JetIsBtaggedWithSF .push_back( jet.userFloat("isBtaggedWithSF"));
    JetIsBtaggedWithSFUp .push_back( jet.userFloat("isBtaggedWithSF_Up"));
@@ -1945,6 +1982,39 @@ void HZZ4lNtupleMaker::FillPhoton(int year, const pat::Photon& photon)
    PhotonPhi .push_back( photon.phi());
 
    PhotonIsCutBasedLooseID .push_back( PhotonIDHelper::isCutBasedID_Loose(year, photon) );
+}
+
+void HZZ4lNtupleMaker::FillSV(const reco::VertexCompositePtrCandidate& sv, const reco::Vertex& pv)
+{
+    SVPhi.push_back(sv.phi());
+    SVEta.push_back(sv.eta());
+    SVMass.push_back(sv.mass());
+    SVEnergy.push_back(sv.energy());
+    SVPt.push_back(sv.pt());
+
+    // sv properties
+    SVNTracks.push_back(sv.numberOfDaughters());
+    SVNormChi2.push_back(sv.vertexNormalizedChi2());
+
+    VertexDistanceXY distxy;
+    reco::Vertex::CovarianceMatrix csvxy;
+    sv.fillVertexCovariance(csvxy);
+    reco::Vertex svtxxy(sv.vertex(), csvxy);
+    Measurement1D dxy = distxy.distance(svtxxy, pv);
+    SVDxy.push_back(dxy.value());
+    SVDxySig.push_back(dxy.significance());
+
+    VertexDistance3D dist3d;
+    reco::Vertex::CovarianceMatrix csv3d;
+    sv.fillVertexCovariance(csv3d);
+    reco::Vertex svtx3d(sv.vertex(), csv3d);
+    Measurement1D d3d = dist3d.distance(svtx3d, pv);
+    SVD3d.push_back(d3d.value());
+    SVD3dSig.push_back(d3d.significance());
+
+    reco::Candidate::Vector p = sv.momentum();
+    reco::Candidate::Vector d(sv.vx() - pv.x(), sv.vy() - pv.y(), sv.vz() - pv.z());
+    SVCosThetaSVPV.push_back(p.Unit().Dot(d.Unit()));
 }
 
 float HZZ4lNtupleMaker::EvalSpline(TSpline3* const& sp, float xval){
@@ -2652,7 +2722,7 @@ void HZZ4lNtupleMaker::endLuminosityBlock(edm::LuminosityBlock const& iLumi, edm
   if (iLumi.getByToken(preSkimToken, preSkimCounter)) { // Counter before skim. Does not exist for non-skimmed samples.
     Nevt_preskim = preSkimCounter->value;
    // We do not use a filtering skim for the time being; so this is just left as a check in case we need it again in the future.
-    if (!std::uncaught_exception() && Nevt_preskim>=0.) assert(Nevt_preskim == Nevt_Gen_lumiBlock);
+    if (!std::uncaught_exception() && Nevt_preskim>=0.) if (Nevt_preskim != Nevt_Gen_lumiBlock) cout<<"emm..."<<endl;
   }
 
   Nevt_Gen += Nevt_Gen_lumiBlock;
@@ -3073,7 +3143,10 @@ void HZZ4lNtupleMaker::BookAllBranches(){
   myTree->Book("JetPhi",JetPhi, failedTreeLevel >= minimalFailedTree);
   myTree->Book("JetMass",JetMass, failedTreeLevel >= minimalFailedTree);
   myTree->Book("JetEnergy",JetEnergy, failedTreeLevel >= fullFailedTree);
-  myTree->Book("JetBTagger",JetBTagger, failedTreeLevel >= fullFailedTree);
+  myTree->Book("JetCTaggerVsL",JetCTaggerVsL, failedTreeLevel >= fullFailedTree);
+  myTree->Book("JetCTaggerVsB",JetCTaggerVsB, failedTreeLevel >= fullFailedTree);
+  myTree->Book("JetCParticleNetVsL",JetCParticleNetVsL, failedTreeLevel >= fullFailedTree);
+  myTree->Book("JetCParticleNetVsB",JetCParticleNetVsB, failedTreeLevel >= fullFailedTree);
   myTree->Book("JetIsBtagged",JetIsBtagged, failedTreeLevel >= fullFailedTree);
   myTree->Book("JetIsBtaggedWithSF",JetIsBtaggedWithSF, failedTreeLevel >= fullFailedTree);
   myTree->Book("JetIsBtaggedWithSFUp",JetIsBtaggedWithSFUp, failedTreeLevel >= fullFailedTree);
@@ -3149,6 +3222,20 @@ void HZZ4lNtupleMaker::BookAllBranches(){
   myTree->Book("PhotonEta",PhotonEta, failedTreeLevel >= fullFailedTree);
   myTree->Book("PhotonPhi",PhotonPhi, failedTreeLevel >= fullFailedTree);
   myTree->Book("PhotonIsCutBasedLooseID",PhotonIsCutBasedLooseID, failedTreeLevel >= fullFailedTree);
+
+  // SV variables
+  myTree->Book("SVPhi",SVPhi, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVEta",SVEta, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVMass",SVMass, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVEnergy",SVEnergy, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVPt",SVPt, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVNTracks",SVNTracks, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVNormChi2",SVNormChi2, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVDxy",SVDxy, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVDxySig",SVDxySig, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVD3d",SVD3d, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVD3dSig",SVD3dSig, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVCosThetaSVPV",SVCosThetaSVPV, failedTreeLevel >= fullFailedTree);
 
   myTree->Book("nExtraLep",nExtraLep, false);
   myTree->Book("nExtraZ",nExtraZ, false);

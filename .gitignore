@@ -1,3 +1,6 @@
+# Include the prod folder
+prod
+
 # Compiled Object files
 *.slo
 *.lo

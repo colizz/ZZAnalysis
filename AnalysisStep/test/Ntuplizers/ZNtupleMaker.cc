@@ -206,7 +206,10 @@ namespace {
   std::vector<float> JetPhi;
   std::vector<float> JetMass;
   std::vector<float> JetEnergy;
-  std::vector<float> JetBTagger;
+  std::vector<float> JetCTaggerVsL;
+  std::vector<float> JetCTaggerVsB;
+  std::vector<float> JetCParticleNetVsL;
+  std::vector<float> JetCParticleNetVsB;
   std::vector<float> JetIsBtagged;
   std::vector<float> JetIsBtaggedWithSF;
   std::vector<float> JetIsBtaggedWithSFUp;
@@ -1042,7 +1045,10 @@ void ZNtupleMaker::FillJet(const pat::Jet& jet)
   JetPhi .push_back( jet.phi());
   JetMass .push_back( jet.p4().M());
   JetEnergy .push_back( jet.p4().energy());
-  JetBTagger .push_back( jet.userFloat("bTagger"));
+  JetCTaggerVsL .push_back( jet.userFloat("cTaggerVsL"));
+  JetCTaggerVsB .push_back( jet.userFloat("cTaggerVsB"));
+  JetCParticleNetVsL .push_back( jet.userFloat("cParticleNetVsL"));
+  JetCParticleNetVsB .push_back( jet.userFloat("cParticleNetVsB"));
   JetIsBtagged .push_back( jet.userFloat("isBtagged"));
   JetIsBtaggedWithSF .push_back( jet.userFloat("isBtaggedWithSF"));
   JetIsBtaggedWithSFUp .push_back( jet.userFloat("isBtaggedWithSF_Up"));
@@ -1363,7 +1369,10 @@ void ZNtupleMaker::BookAllBranches(){
     myTree->Book("JetPhi",JetPhi);
     myTree->Book("JetMass",JetMass);
     myTree->Book("JetEnergy",JetEnergy);
-    myTree->Book("JetBTagger",JetBTagger);
+    myTree->Book("JetCTaggerVsL",JetCTaggerVsL);
+    myTree->Book("JetCTaggerVsB",JetCTaggerVsB);
+    myTree->Book("JetCParticleNetVsL",JetCParticleNetVsL);
+    myTree->Book("JetCParticleNetVsB",JetCParticleNetVsB);
     myTree->Book("JetIsBtagged",JetIsBtagged);
     myTree->Book("JetIsBtaggedWithSF",JetIsBtaggedWithSF);
     myTree->Book("JetIsBtaggedWithSFUp",JetIsBtaggedWithSFUp);

@@ -1175,6 +1175,12 @@ elif (LEPTON_SETUP == 2018):
 else:
    sys.exit("ZZ4lAnalysis.py: Need to define the btagging for the new setup!")
 
+assert LEPTON_SETUP == 2018
+theBTagger="someDeepJetc"
+theBTaggerThr=0
+# the nominal SF does not seem to be changed. We use the original setting
+theBTagSFFile="ZZAnalysis/AnalysisStep/data/BTagging/DeepCSV_106XUL18SF_WPonly.csv"
+theBTagMCEffFile="ZZAnalysis/AnalysisStep/data/BTagging/bTagEfficiencies_2018_LegacyPaper.root"
 
 ### q/g likelihood
 qgDatabaseVersion = 'cmssw8020_v2'
@@ -1447,6 +1453,10 @@ if (APPLYJEC and SAMPLE_TYPE == 2018):
     ### Add pileup id and discriminant to patJetsReapplyJEC
     process.patJetsReapplyJEC.userData.userFloats.src += ['pileupJetIdUpdated:fullDiscriminant']
     process.patJetsReapplyJEC.userData.userInts.src += ['pileupJetIdUpdated:fullId']
+
+    ## changeme
+    # process.updatedPatJetsTransientCorrectedWithParticleNet.userData.userFloats.src += ['pileupJetIdUpdated:fullDiscriminant']
+    # process.updatedPatJetsTransientCorrectedWithParticleNet.userData.userInts.src += ['pileupJetIdUpdated:fullId']
 
     ### Replace inputs in QGTagger and dressedJets
     process.QGTagger.srcJets = cms.InputTag( 'patJetsReapplyJEC')
