@@ -1061,6 +1061,9 @@ from PhysicsTools.PatAlgos.tools.jetTools import updateJetCollection
 
 process.load("CondCore.CondDB.CondDB_cfi")
 
+## update SVs for soft-c tagging
+process.load("ZZAnalysis.SVFlavourTag.pfParticleNetSVFlavourTagSuite_cff")
+
 # Update jet collection in 2016 MC ntuples to include DeepCSV and DeepFlavour b tag algorithms
 # NB: In 2016 Data we do not want to update jet collection to include DeepCSV info (it is already there!)
 
@@ -1667,6 +1670,7 @@ process.preSkimCounter = cms.EDProducer("EventCountProducer")
 process.PVfilter =  cms.Path(process.preSkimCounter+process.goodPrimaryVertices)
 
 if APPLYJEC:
+<<<<<<< HEAD
     process.Jets = cms.Path(process.pileupJetIdUpdated + process.patJetCorrFactorsReapplyJEC + process.patJetsReapplyJEC + process.QGTagger + process.dressedJets )
     #--- UL: Now all three years should be equal
     # if (SAMPLE_TYPE == 2016 and IsMC):
@@ -1674,6 +1678,16 @@ if APPLYJEC:
     #     process.Jets = cms.Path(process.jetSequence + process.jetCorrFactors + process.jetsWithJEC + process.QGTagger + process.dressedJets )
     # elif (SAMPLE_TYPE == 2017 or SAMPLE_TYPE == 2018 or (SAMPLE_TYPE == 2016 and (not IsMC)) ):
     #     process.Jets = cms.Path(process.pileupJetIdUpdated + process.patJetCorrFactorsReapplyJEC + process.patJetsReapplyJEC + process.QGTagger + process.dressedJets )
+=======
+    process.pfParticleNetSVFlavourTagInfos.is_mc = IsMC
+    process.SVs = cms.Path(process.pfParticleNetSVFlavourTagInfos + process.pfParticleNetSVFlavourTagsPhantomJets)
+
+    if (SAMPLE_TYPE == 2016 and IsMC):
+        # Removed pileupJetId update in order to use updateJetCollection
+        process.Jets = cms.Path(process.jetSequence + process.jetCorrFactors + process.jetsWithJEC + process.QGTagger + process.dressedJets )
+    elif (SAMPLE_TYPE == 2017 or SAMPLE_TYPE == 2018 or (SAMPLE_TYPE == 2016 and (not IsMC)) ):
+        process.Jets = cms.Path(process.pileupJetIdUpdated + process.patJetCorrFactorsReapplyJEC + process.patJetsReapplyJEC + process.QGTagger + process.dressedJets )
+>>>>>>> First version of SV flavour tagging with ParticleNet
 else:
     process.Jets = cms.Path( process.QGTagger + process.dressedJets )
 

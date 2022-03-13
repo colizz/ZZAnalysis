@@ -390,6 +390,11 @@ namespace {
   std::vector<float> SVD3d ;
   std::vector<float> SVD3dSig ;
   std::vector<float> SVCosThetaSVPV ;
+  std::vector<float> SVGenFlav ;
+  std::vector<float> SVParticleNetProbC ;
+  std::vector<float> SVParticleNetProbB ;
+  std::vector<float> SVParticleNetProbCfromB ;
+  std::vector<float> SVParticleNetProbL ;
   
   Short_t genFinalState  = 0;
   Int_t genProcessId  = 0;
@@ -619,7 +624,7 @@ private:
   virtual void FillCandidate(const pat::CompositeCandidate& higgs, bool evtPass, const edm::Event&, const Int_t CRflag);
   virtual void FillJet(const pat::Jet& jet);
   virtual void FillPhoton(int year, const pat::Photon& photon);
-  virtual void FillSV(const reco::VertexCompositePtrCandidate& sv, const reco::Vertex& pv);
+  virtual void FillSV(const reco::VertexCompositePtrCandidate& sv, const pat::Jet& spjet, const reco::Vertex& pv);
   virtual void endJob() ;
 
   virtual void FillGENCandidate(const pat::CompositeCandidate& cand); //AT
@@ -722,6 +727,7 @@ private:
   edm::EDGetTokenT<edm::TriggerResults> triggerResultToken;
   edm::EDGetTokenT<vector<reco::Vertex> > vtxToken;
   edm::EDGetTokenT<vector<reco::VertexCompositePtrCandidate> > svToken;
+  edm::EDGetTokenT<edm::View<pat::Jet> > svPhantomJetToken;
   edm::EDGetTokenT<edm::View<pat::Jet> > jetToken;
   edm::EDGetTokenT<pat::PhotonCollection> photonToken;
   edm::EDGetTokenT<pat::METCollection> metToken;
@@ -854,6 +860,7 @@ HZZ4lNtupleMaker::HZZ4lNtupleMaker(const edm::ParameterSet& pset) :
   triggerResultToken = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults"));
   vtxToken = consumes<vector<reco::Vertex> >(edm::InputTag("goodPrimaryVertices"));
   svToken = consumes<vector<reco::VertexCompositePtrCandidate> >(edm::InputTag("slimmedSecondaryVertices"));
+  svPhantomJetToken = consumes<edm::View<pat::Jet> >(edm::InputTag("pfParticleNetSVFlavourTagsPhantomJets"));
   jetToken = consumes<edm::View<pat::Jet> >(edm::InputTag("cleanJets"));
   photonToken = consumes<pat::PhotonCollection>(edm::InputTag("slimmedPhotons"));
   metToken = consumes<pat::METCollection>(metTag);
@@ -1469,11 +1476,13 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
 
   // Secondary vertex
   Handle<vector<reco::VertexCompositePtrCandidate> > svs;
+  Handle<edm::View<pat::Jet> > sv_phantom_jets;
   event.getByToken(svToken, svs);
+  event.getByToken(svPhantomJetToken, sv_phantom_jets);
   if (writeSVs) {
     auto &pv = vertices->at(0);
     for (unsigned int i = 0; i< svs->size(); ++i)
-      FillSV(svs->at(i), pv);
+      FillSV(svs->at(i), sv_phantom_jets->at(i), pv);
   }
 
   // Jets (cleaned wrt all tight isolated leptons)
@@ -1984,7 +1993,7 @@ void HZZ4lNtupleMaker::FillPhoton(int year, const pat::Photon& photon)
    PhotonIsCutBasedLooseID .push_back( PhotonIDHelper::isCutBasedID_Loose(year, photon) );
 }
 
-void HZZ4lNtupleMaker::FillSV(const reco::VertexCompositePtrCandidate& sv, const reco::Vertex& pv)
+void HZZ4lNtupleMaker::FillSV(const reco::VertexCompositePtrCandidate& sv, const pat::Jet& spjet, const reco::Vertex& pv)
 {
     SVPhi.push_back(sv.phi());
     SVEta.push_back(sv.eta());
@@ -2015,6 +2024,13 @@ void HZZ4lNtupleMaker::FillSV(const reco::VertexCompositePtrCandidate& sv, const
     reco::Candidate::Vector p = sv.momentum();
     reco::Candidate::Vector d(sv.vx() - pv.x(), sv.vy() - pv.y(), sv.vz() - pv.z());
     SVCosThetaSVPV.push_back(p.Unit().Dot(d.Unit()));
+
+    // SV flavour tagging variables
+    SVGenFlav.push_back(spjet.hasUserFloat("gen_flavour") ? spjet.userFloat("gen_flavour") : -1); // fill -1 for data
+    SVParticleNetProbB.push_back(spjet.userFloat("probb"));
+    SVParticleNetProbC.push_back(spjet.userFloat("probc"));
+    SVParticleNetProbCfromB.push_back(spjet.userFloat("probcfromb"));
+    SVParticleNetProbL.push_back(spjet.userFloat("probl"));
 }
 
 float HZZ4lNtupleMaker::EvalSpline(TSpline3* const& sp, float xval){
@@ -3236,6 +3252,11 @@ void HZZ4lNtupleMaker::BookAllBranches(){
   myTree->Book("SVD3d",SVD3d, failedTreeLevel >= fullFailedTree);
   myTree->Book("SVD3dSig",SVD3dSig, failedTreeLevel >= fullFailedTree);
   myTree->Book("SVCosThetaSVPV",SVCosThetaSVPV, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVGenFlav",SVGenFlav, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVParticleNetProbB",SVParticleNetProbB, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVParticleNetProbC",SVParticleNetProbC, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVParticleNetProbCfromB",SVParticleNetProbCfromB, failedTreeLevel >= fullFailedTree);
+  myTree->Book("SVParticleNetProbL",SVParticleNetProbL, failedTreeLevel >= fullFailedTree);
 
   myTree->Book("nExtraLep",nExtraLep, false);
   myTree->Book("nExtraZ",nExtraZ, false);
