@@ -525,7 +525,7 @@ namespace {
   Int_t   htxs_prodMode=-1;
   Int_t   htxs_stage0_cat = -1;
   Int_t   htxs_stage1p1_cat = -1;
-  Int_t   htxs_stage1p0_cat = -1;
+  // Int_t   htxs_stage1p0_cat = -1;
   Int_t   htxs_stage1p2_cat = -1;
   Float_t ggH_NNLOPS_weight = 0;
   Float_t ggH_NNLOPS_weight_unc = 0;
@@ -904,7 +904,7 @@ HZZ4lNtupleMaker::HZZ4lNtupleMaker(const edm::ParameterSet& pset) :
       year, LHEHandler::tryNNPDF30, LHEHandler::tryNLO, LHEHandler::CMS_Run2_UL
     );
     metCorrHandler = new METCorrectionHandler(Form("%i", year));
-    htxsToken = consumes<HTXS::HiggsClassification>(edm::InputTag("rivetProducerHTXS","HiggsClassification"));
+    // htxsToken = consumes<HTXS::HiggsClassification>(edm::InputTag("rivetProducerHTXS","HiggsClassification"));
     pileUpReweight = new PileUpWeight(myHelper.sampleType(), myHelper.setup());
   }
 
@@ -1107,8 +1107,8 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
     event.getByToken(genParticleToken_bbf, genParticles_bbf); //ATbbf
     event.getByToken(GENCandidatesToken, GENCandidates);//ATMELA
 
-    edm::Handle<HTXS::HiggsClassification> htxs;
-    event.getByToken(htxsToken,htxs);
+    // edm::Handle<HTXS::HiggsClassification> htxs;
+    // event.getByToken(htxsToken,htxs);
 
     MCHistoryTools mch(event, sampleName, genParticles, genInfo, genJets, packedgenParticles);
     genFinalState = mch.genFinalState();
@@ -1248,14 +1248,14 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
       PythiaWeight_fsr_muR0p5 = PythiaWeight_fsr_muR4 = PythiaWeight_fsr_muR0p25 = 1;
     }
 
-   htxsNJets = htxs->jets30.size();
-   htxsHPt = htxs->higgs.Pt();
-   htxs_stage0_cat = htxs->stage0_cat;
-   htxs_stage1p0_cat = htxs->stage1_cat_pTjet30GeV;
-   htxs_stage1p1_cat = htxs->stage1_1_cat_pTjet30GeV;
-   htxs_stage1p2_cat = htxs->stage1_2_cat_pTjet30GeV;
-   htxs_errorCode=htxs->errorCode;
-   htxs_prodMode= htxs->prodMode;
+  //  htxsNJets = htxs->jets30.size();
+  //  htxsHPt = htxs->higgs.Pt();
+  //  htxs_stage0_cat = htxs->stage0_cat;
+  //  htxs_stage1p0_cat = htxs->stage1_cat_pTjet30GeV;
+  //  htxs_stage1p1_cat = htxs->stage1_1_cat_pTjet30GeV;
+  //  htxs_stage1p2_cat = htxs->stage1_2_cat_pTjet30GeV;
+  //  htxs_errorCode=htxs->errorCode;
+  //  htxs_prodMode= htxs->prodMode;
 
    genExtInfo = mch.genAssociatedFS();
 
@@ -1606,32 +1606,32 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
 
 
 
-    if (htxsNJets==0)
-    {
-      ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_0jet->Eval(min((double) htxsHPt, 125.0));
-      ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_0jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_0jet, min((double) htxsHPt, 125.0))))/ggH_NNLOPS_weight;
+    // if (htxsNJets==0)
+    // {
+    //   ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_0jet->Eval(min((double) htxsHPt, 125.0));
+    //   ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_0jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_0jet, min((double) htxsHPt, 125.0))))/ggH_NNLOPS_weight;
 
-    }
-	  else if (htxsNJets==1)
-	  {
-		  ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_1jet->Eval(min((double)htxsHPt,625.0));
-		  ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_1jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_1jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
-	  }
-	  else if (htxsNJets==2)
-	  {
-		  ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_2jet->Eval(min((double)htxsHPt,800.0));
-		  ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_2jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_2jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
-	  }
-	  else if (htxsNJets>=3)
-	  {
-		  ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_3jet->Eval(min((double)htxsHPt,925.0));
-		  ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_3jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_3jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
-	  }
-	  else
-	  {
-		  ggH_NNLOPS_weight = 1.0;
-		  ggH_NNLOPS_weight_unc = 0.0;
-	  }
+    // }
+	  // else if (htxsNJets==1)
+	  // {
+		//   ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_1jet->Eval(min((double)htxsHPt,625.0));
+		//   ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_1jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_1jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
+	  // }
+	  // else if (htxsNJets==2)
+	  // {
+		//   ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_2jet->Eval(min((double)htxsHPt,800.0));
+		//   ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_2jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_2jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
+	  // }
+	  // else if (htxsNJets>=3)
+	  // {
+		//   ggH_NNLOPS_weight = gr_NNLOPSratio_pt_powheg_3jet->Eval(min((double)htxsHPt,925.0));
+		//   ggH_NNLOPS_weight_unc=(gr_NNLOPSratio_pt_powheg_3jet->GetErrorY(FindBinValue(gr_NNLOPSratio_pt_powheg_3jet,min((double)htxsHPt,125.0))))/ggH_NNLOPS_weight;
+	  // }
+	  // else
+	  // {
+		//   ggH_NNLOPS_weight = 1.0;
+		//   ggH_NNLOPS_weight_unc = 0.0;
+	  // }
 
 
 	  std::vector<double> qcd_ggF_uncertSF_tmp;
@@ -1643,8 +1643,8 @@ void HZZ4lNtupleMaker::analyze(const edm::Event& event, const edm::EventSetup& e
     //////////////////     CHECK THIS!!!!!    //////////////////
     ////////////////////////////////////////////////////////////
 
-	  qcd_ggF_uncertSF_tmp = qcd_ggF_uncertSF_2017(htxsNJets, htxsHPt, htxs_stage1p0_cat);
-	  qcd_ggF_uncertSF = std::vector<float>(qcd_ggF_uncertSF_tmp.begin(),qcd_ggF_uncertSF_tmp.end());
+	  // qcd_ggF_uncertSF_tmp = qcd_ggF_uncertSF_2017(htxsNJets, htxsHPt, htxs_stage1p0_cat);
+	  // qcd_ggF_uncertSF = std::vector<float>(qcd_ggF_uncertSF_tmp.begin(),qcd_ggF_uncertSF_tmp.end());
 
 
   }
